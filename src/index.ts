@@ -43,7 +43,54 @@ async function readRequestBody(request: Request) {
   }
 }
 
+function handleOptions(request: Request) {
+  if (
+    request.headers.get("Origin") !== null &&
+    request.headers.get("Access-Control-Request-Method") !== null &&
+    request.headers.get("Access-Control-Request-Headers") !== null
+  ) {
+    // Handle CORS pre-flight request.
+    return new Response(null, {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Client-Key",
+      },
+    });
+  } else {
+    // Handle standard OPTIONS request.
+    return new Response(null, {
+      headers: {
+        Allow: "GET, HEAD, POST, OPTIONS",
+      },
+    });
+  }
+}
+
+const JSONResponse = (message, status = 200) => {
+  let headers = {
+    headers: {
+      "content-type": "application/json;charset=UTF-8",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    },
+
+    status: status,
+  };
+
+  let response = {
+    message: message,
+  };
+
+  return new Response(JSON.stringify(response), headers);
+};
+
 export async function handleRequest(request: Request, env: Bindings) {
+  if (request.method === "OPTIONS") {
+    return handleOptions(request);
+  }
+
   if (request.method !== "POST") {
     throw new Error("Only POST requests are supported");
   }
@@ -92,7 +139,16 @@ export async function handleRequest(request: Request, env: Bindings) {
     throw new Error(`Error sending email: ${emailResponse.statusText}`);
   }
 
-  return new Response("Reminder scheduled");
+  const responseInit = {
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    },
+    status: 201,
+  };
+
+  return new Response("Reminder scheduled", responseInit);
 }
 
 const worker: ExportedHandler<Bindings> = { fetch: handleRequest };
